@@ -1,9 +1,9 @@
 # Parser Projects
 Repository containing the XML parsers for the following projects:
 
-* Digitale Stanze (Uniklinikum Essen)
-* COV-RADS-Validierung (Uniklinikum Aachen)
-* A combined risk model in hospitalized COVID-19 patients (Uniklinikum Frankfurt)
+* **Digitale Stanze** (Uniklinikum Essen)
+* **COV-RADS-Validierung** (Uniklinikum Aachen)
+* **A combined risk model in hospitalized COVID-19 patients** (Uniklinikum Frankfurt)
 
 The parser for "Digitale Stanze" project has been developed by Moon Kim, a detailed documentation can be found here: https://gitlab.com/moon.kim.mail/racoon-xmlparser
 
