@@ -6,6 +6,7 @@ Repository containing the XML parsers for the following projects:
 * A combined risk model in hospitalized COVID-19 patients (Uniklinikum Frankfurt)
 
 The parser for "Digitale Stanze" project has been developed by Moon Kim, a detailed documentation can be found here: https://gitlab.com/moon.kim.mail/racoon-xmlparser
+
 For the other projects, this script has been used as a ground work - thank you for your work!
 
 ## User documentation for using the executable parser files
