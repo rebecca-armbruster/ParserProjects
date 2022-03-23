@@ -692,7 +692,7 @@ def anonymize(df, uids):
     return df
 
 
-def get_template_information(d, c, params):
+def get_template_information(d, c, params, patient_index):
     """ Extract all template information for a given case.
 
     Args:
@@ -704,7 +704,20 @@ def get_template_information(d, c, params):
         pd.DataFrame: Dataframe containing update case information
 
     """
-    patient_id = c[0].attrib['PatientID']
+    # patient_id = c[0].attrib['PatientID']
+    patient_id = None
+    try:
+        for p in c.iter('Patient'):
+            patient_id = p.attrib['PatientID']
+    except KeyError:
+        print(f'WARNING::Patient tag available but no PatientID. New PatientID will be generated for patient {patient_index}')
+        patient_id = f'Patient_{patient_index:03d}'
+    except Exception as e:
+        print(f'WARNING::New PatientID will be generated for patient {patient_index} due to unhandled exception when targeting PatientID: {e}')
+        patient_id = f'Patient_{patient_index:03d}'
+    if patient_id is None:
+        print(f'WARNING::No patient tag available. New PatientID will be generated for patient {patient_index}')
+        patient_id = f'Patient_{patient_index:03d}'
     templates = list(c.iter('Task'))
     for j, template in enumerate(templates):
         try:
@@ -743,9 +756,9 @@ def main(required_parameters,
 
     print(f'INFO::Extracting case information')
     for i, case in enumerate(all_cases):
-        if i % 100 == 0:  # Maybe 100 instead of 50
-            print(f'INFO::Currently handling case: {i + 1}/{n_cases}')
-        data = get_template_information(d=data, c=case, params=required_parameters)
+        if i % 100 == 0: 
+            print(f'INFO::Currently handling case: {i}/{n_cases}')
+        data = get_template_information(d=data, c=case, params=required_parameters, patient_index=i)
 
     # Extract CT study dates
     print('INFO::Extract CT study dates from XML file')
@@ -894,7 +907,7 @@ def get_random_characters():
 
 
 # sorry for the mess and ifs
-def getCaseLesions(case, testing=False):
+def getCaseLesions(case, patient_index, testing=False):
     lesion_list = []
     lesion_class = ''
 
@@ -902,7 +915,20 @@ def getCaseLesions(case, testing=False):
     # case_string = case.attrib['CaseID'] + case[0].attrib['LastName'] + case[0].attrib['PatientID'] + case[0].attrib[
     #     'InstitutionName']
     # hash_string = encrypt(case_string)
-    hash_string = case[0].attrib['PatientID']
+    # hash_string = case[0].attrib['PatientID']
+    patient_id = None
+    try:
+        for p in case.iter('Patient'):
+            patient_id = p.attrib['PatientID']
+    except KeyError:
+        print(f'WARNING::Patient tag available but no PatientID. New PatientID will be generated for patient {patient_index}')
+        patient_id = f'Patient_{patient_index:03d}'
+    except Exception as e:
+        print(f'WARNING::New PatientID will be generated for patient {patient_index} due to unhandled exception when targeting PatientID: {e}')
+        patient_id = f'Patient_{patient_index:03d}'
+    if patient_id is None:
+        print(f'WARNING::No patient tag available. New PatientID will be generated for patient {patient_index}')
+        patient_id = f'Patient_{patient_index:03d}'
     try:
         DaysSinceBaseline = case[1][1].attrib['DaysSinceBaseline']
     except:
@@ -934,7 +960,7 @@ def getCaseLesions(case, testing=False):
 
             histogram_data, histogram_attrib = get_histogramm(lesion)
 
-            case_lesion = dict(PatientID=hash_string,
+            case_lesion = dict(PatientID=patient_id,
                                Category=Category,
                                Lesion_class=lesion_class,
                                LesionID=LesionID,
@@ -957,7 +983,7 @@ def getCaseLesions(case, testing=False):
 
                 dicom_info = get_dicom_info(referenzmessung_presternal)
                 histogram_data, histogram_attrib = get_histogramm(referenzmessung_presternal)
-                case_lesion = dict(PatientID=hash_string,
+                case_lesion = dict(PatientID=patient_id,
                                    Category=Category,
                                    Lesion_class=lesion_class,
                                    LesionID=LesionID,
@@ -993,7 +1019,7 @@ def main_digitale_stanze(cases):
 
     for i, case in enumerate(cases):
         try:
-            case_lesions = getCaseLesions(case)
+            case_lesions = getCaseLesions(case, patient_index=i)
             lesion_list.extend(case_lesions)
         except Exception as e:
             # print(f'WARNING::Could not handle case {i}/{len(cases)}: {e}')
@@ -1039,8 +1065,8 @@ if __name__ == '__main__':
         data_cov_rads = anonymize(data_cov_rads, uids=replacements)
 
         print('INFO::Save excel files')
-        out_file_risk_model = os.path.join(script_dir, f'{info}_raw_data_risk-model_V3.xlsx')
-        out_file_cov_rads = os.path.join(script_dir, f'{info}_raw_data_cov-rads-validation_V3.xlsx')
+        out_file_risk_model = os.path.join(script_dir, f'{info}_raw_data_risk-model_V4.xlsx')
+        out_file_cov_rads = os.path.join(script_dir, f'{info}_raw_data_cov-rads-validation_V4.xlsx')
         data_risk_model.to_excel(out_file_risk_model, index=False)
         data_cov_rads.to_excel(out_file_cov_rads, index=False)
 
@@ -1052,7 +1078,7 @@ if __name__ == '__main__':
                 print(f'INFO::Add anonymized id for patient {id_}')
                 replacements[id_] = uuid.uuid4()
         data_digitale_stanze = anonymize(data_digitale_stanze, uids=replacements)
-        out_file_digitale_stanze = os.path.join(script_dir, f'lesion_histogram_list_V3.xlsx')
+        out_file_digitale_stanze = os.path.join(script_dir, f'lesion_histogram_list_V4.xlsx')
         data_digitale_stanze.to_excel(out_file_digitale_stanze, index=False)
 
         print('DONE::XML extraction finished')
