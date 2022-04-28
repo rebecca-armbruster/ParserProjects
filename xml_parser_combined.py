@@ -536,6 +536,7 @@ def remove_non_ct_patients(df):
 
 def extract_earliest_ct_dates(cts):
     earliest_ct_dates = {}
+    non_ct_date_patients = []
     for patient, dates in cts.items():
         if np.nan in dates:
             dates.remove(np.nan)
@@ -546,7 +547,8 @@ def extract_earliest_ct_dates(cts):
             earliest_ct_dates[patient] = earliest_date
         else:
             print(f'WARNING::There is no CT date extracted for any CT of patient {patient}')
-    return earliest_ct_dates
+            non_ct_date_patients.append(patient)
+    return earliest_ct_dates, non_ct_date_patients
 
 
 def extract_n_days(df, patients_list):
@@ -567,20 +569,26 @@ def extract_n_days(df, patients_list):
     return n_days
 
 
+def list_diff(li1, li2):
+    li_dif = [i for i in li1 + li2 if i not in li1 or i not in li2]
+    return li_dif
+
+
 def calculate_baseline_date(df):
     patients = df['PatientID'].unique().tolist()
     ct_dates = {patient: df[df['PatientID'] == patient]['CT//StudyDate'].unique().tolist() for patient in patients}
 
     # Extract earliest date from list of CT dates
-    earliest_ct_dates = extract_earliest_ct_dates(ct_dates)
+    earliest_ct_dates, non_ct_date_patients = extract_earliest_ct_dates(ct_dates)
+    rel_patients = list_diff(patients, non_ct_date_patients)
 
     # Get minimum number of days since admission for each patient
     n_days = extract_n_days(df, patients)
 
     # Calculate baseline date for each patient
-    baselines = {patient: earliest_ct_dates[patient] - timedelta(days=n_days[patient]) for patient in patients}
+    baselines = {patient: earliest_ct_dates[patient] - timedelta(days=n_days[patient]) for patient in rel_patients}
 
-    return baselines, pd.DataFrame(baselines.items(), columns=['PatientID', 'Baseline Date Calculated'])
+    return baselines, pd.DataFrame(baselines.items(), columns=['PatientID', 'Baseline Date Calculated']), non_ct_date_patients
 
 
 def get_time_difference(baseline, reference):
@@ -770,7 +778,9 @@ def main(required_parameters,
 
     # Calculate baseline date for each patient
     print(f'INFO::Calculate baseline date for each patient')
-    baselines, baseline_dates = calculate_baseline_date(data)
+    baselines, baseline_dates, non_ct_date_patients = calculate_baseline_date(data)
+    # Drop CTs that do not have a CT study date
+    data = data[~data['PatientID'].isin(non_ct_date_patients)]
     data = pd.merge(left=data, right=baseline_dates, on='PatientID', how='left')
     data['Baseline Date Calculated'] = pd.to_datetime(data['Baseline Date Calculated']).apply(lambda x: x.date())
 
@@ -1065,8 +1075,8 @@ if __name__ == '__main__':
         data_cov_rads = anonymize(data_cov_rads, uids=replacements)
 
         print('INFO::Save excel files')
-        out_file_risk_model = os.path.join(script_dir, f'{info}_raw_data_risk-model_V4.xlsx')
-        out_file_cov_rads = os.path.join(script_dir, f'{info}_raw_data_cov-rads-validation_V4.xlsx')
+        out_file_risk_model = os.path.join(script_dir, f'{info}_raw_data_risk-model_V5.xlsx')
+        out_file_cov_rads = os.path.join(script_dir, f'{info}_raw_data_cov-rads-validation_V5.xlsx')
         data_risk_model.to_excel(out_file_risk_model, index=False)
         data_cov_rads.to_excel(out_file_cov_rads, index=False)
 
@@ -1078,7 +1088,7 @@ if __name__ == '__main__':
                 print(f'INFO::Add anonymized id for patient {id_}')
                 replacements[id_] = uuid.uuid4()
         data_digitale_stanze = anonymize(data_digitale_stanze, uids=replacements)
-        out_file_digitale_stanze = os.path.join(script_dir, f'lesion_histogram_list_V4.xlsx')
+        out_file_digitale_stanze = os.path.join(script_dir, f'lesion_histogram_list_V5.xlsx')
         data_digitale_stanze.to_excel(out_file_digitale_stanze, index=False)
 
         print('DONE::XML extraction finished')
